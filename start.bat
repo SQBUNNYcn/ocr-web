@@ -10,7 +10,7 @@ start "ocr-dev-server" /min cmd /c "npm run dev"
 
 echo [2/2] 启动公网隧道 (Cloudflare)...
 if exist cf-err.log del cf-err.log
-start "cloudflare-tunnel" /min cmd /c "tools\cloudflared.exe tunnel --url http://localhost:5173 --no-autoupdate 2>cf-err.log"
+start "cloudflare-tunnel" /min cmd /c "tools\cloudflared.exe tunnel --url http://localhost:5173 --no-autoupdate --protocol http2 2>cf-err.log"
 
 echo.
 echo 等待隧道建立（约 12 秒）...
