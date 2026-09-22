@@ -69,13 +69,24 @@ async function switchCamera() {
 function capture() {
   const video = videoRef.value
   if (!video) return
+
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+
+  if (!vw || !vh) {
+    error.value = '视频未就绪，请稍后再拍'
+    return
+  }
+
   const canvas = document.createElement('canvas')
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
+  canvas.width = vw
+  canvas.height = vh
   const ctx = canvas.getContext('2d')
   if (!ctx) return
-  ctx.drawImage(video, 0, 0)
-  applyImageProcessing(ctx, canvas.width, canvas.height)
+
+  // 明确指定源与目标尺寸，避免移动端浏览器 drawImage 尺寸异常导致偏移
+  ctx.drawImage(video, 0, 0, vw, vh)
+  applyImageProcessing(ctx, vw, vh)
   capturedImage.value = canvas.toDataURL('image/jpeg', 0.95)
   stop()
   emit('capture', capturedImage.value)
@@ -178,16 +189,16 @@ onBeforeUnmount(stop)
   background: #000;
   border-radius: 12px;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .video,
 .captured {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain; /* 完整显示画面，避免预览与截图不一致导致偏移 */
+  object-position: center;
 }
 
 .video-overlay {
