@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { createWorker, PSM, type Worker } from 'tesseract.js'
 import { enhanceImageData } from '../utils/imageEnhance'
+import { detectSkewAngleFromCanvas, rotateCanvas } from '../utils/deskew'
 
 export type OcrStatus = 'idle' | 'loading' | 'recognizing' | 'done' | 'error'
 
@@ -33,6 +34,11 @@ export function useOcr() {
   const progress = ref(0)
   const worker = ref<Worker | null>(null)
   const loadedLanguage = ref('')
+
+  // 倾斜校正相关状态
+  const autoDeskew = ref(true) // 是否自动检测并校正文字倾斜
+  const deskewAngle = ref(0) // 最近一次检测到的倾斜角度（度）
+  const deskewCorrected = ref(false) // 最近一次是否执行了校正
 
   // 后台预加载识别引擎（worker + 语言模型）
   async function preload(language: string) {
@@ -88,16 +94,48 @@ export function useOcr() {
         h = Math.round(h * scale)
       }
 
-      const canvas = document.createElement('canvas')
+      let canvas = document.createElement('canvas')
       canvas.width = w
       canvas.height = h
-      const ctx = canvas.getContext('2d')
+      let ctx = canvas.getContext('2d')
       if (!ctx) return url
 
       ctx.drawImage(img, 0, 0, w, h)
 
+      // 倾斜校正：检测文字倾斜角度并旋转回正（手抖/歪斜自动纠偏）
+      deskewAngle.value = 0
+      deskewCorrected.value = false
+      if (autoDeskew.value) {
+        try {
+          // 用小图做角度检测（投影法），提升性能
+          const DETECT_WIDTH = 400
+          const smallScale = Math.min(1, DETECT_WIDTH / img.naturalWidth)
+          const sw = Math.max(1, Math.round(img.naturalWidth * smallScale))
+          const sh = Math.max(1, Math.round(img.naturalHeight * smallScale))
+          const smallCanvas = document.createElement('canvas')
+          smallCanvas.width = sw
+          smallCanvas.height = sh
+          const smallCtx = smallCanvas.getContext('2d')
+          if (smallCtx) {
+            smallCtx.drawImage(img, 0, 0, sw, sh)
+            const angle = detectSkewAngleFromCanvas(smallCanvas)
+            deskewAngle.value = Math.round(angle * 10) / 10
+            if (Math.abs(angle) >= 0.5) {
+              deskewCorrected.value = true
+              canvas = rotateCanvas(canvas, angle)
+            }
+          }
+        } catch {
+          // 倾斜检测失败则跳过校正，使用原图
+          deskewAngle.value = 0
+          deskewCorrected.value = false
+        }
+      }
+
       // 图像增强：灰度化 + 畸变校正 + 锐化 + 二值化
-      const imageData = ctx.getImageData(0, 0, w, h)
+      ctx = canvas.getContext('2d')
+      if (!ctx) return url
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       const enhanced = enhanceImageData(imageData)
       ctx.putImageData(enhanced, 0, 0)
 
@@ -161,6 +199,9 @@ export function useOcr() {
     recognize,
     preload,
     terminate,
+    autoDeskew,
+    deskewAngle,
+    deskewCorrected,
     supportedLanguages: SUPPORTED_LANGUAGES,
     psmOptions: PSM_OPTIONS,
   }

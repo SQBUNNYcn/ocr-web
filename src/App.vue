@@ -13,6 +13,9 @@ const {
   recognize,
   preload,
   terminate,
+  autoDeskew,
+  deskewAngle,
+  deskewCorrected,
   supportedLanguages,
   psmOptions,
 } = useOcr()
@@ -124,6 +127,11 @@ onBeforeUnmount(() => {
           </select>
         </div>
 
+        <label class="deskew-toggle">
+          <input type="checkbox" v-model="autoDeskew" />
+          <span>自动校正倾斜</span>
+        </label>
+
         <div class="action-buttons">
           <button
             v-if="hasImage && status === 'done'"
@@ -139,6 +147,13 @@ onBeforeUnmount(() => {
       </section>
 
       <p v-if="error" class="error-banner">{{ error }}</p>
+
+      <p v-if="hasImage && status === 'done' && deskewCorrected" class="deskew-info">
+        🔧 检测到文字倾斜 {{ deskewAngle }}°，已自动校正
+      </p>
+      <p v-else-if="hasImage && status === 'done'" class="deskew-info muted">
+        未检测到明显倾斜（{{ deskewAngle }}°）
+      </p>
 
       <div v-if="status === 'loading' || status === 'recognizing'" class="progress-box">
         <div class="progress-label">
@@ -284,6 +299,24 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
+.deskew-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  padding: 10px 0;
+}
+
+.deskew-toggle input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
 .action-buttons {
   display: flex;
   gap: 10px;
@@ -320,6 +353,21 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;
+}
+
+.deskew-info {
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.deskew-info.muted {
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
 .progress-box {

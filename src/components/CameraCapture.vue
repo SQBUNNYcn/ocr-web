@@ -130,12 +130,20 @@ onBeforeUnmount(stop)
         <p class="overlay-tip">需要摄像头权限，对准文字后点击拍照</p>
       </div>
 
-      <!-- 取景框 -->
+      <!-- 取景框 + 辅助定位线 -->
       <div v-if="streaming" class="frame">
         <span class="corner tl"></span>
         <span class="corner tr"></span>
         <span class="corner bl"></span>
         <span class="corner br"></span>
+        <!-- 水平/垂直中心参考线：对齐文字基线，保持画面水平 -->
+        <span class="ref-line ref-h"></span>
+        <span class="ref-line ref-v"></span>
+        <!-- 三分线网格：辅助构图与对齐 -->
+        <span class="grid-line grid-h1"></span>
+        <span class="grid-line grid-h2"></span>
+        <span class="grid-line grid-v1"></span>
+        <span class="grid-line grid-v2"></span>
       </div>
     </div>
 
@@ -243,6 +251,63 @@ onBeforeUnmount(stop)
   border-left: none;
   border-top: none;
   border-bottom-right-radius: 8px;
+}
+
+/* 中心参考线（较明显，帮助对齐文字基线、保持水平） */
+.ref-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.ref-h {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+}
+
+.ref-v {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+/* 三分线网格（较淡，辅助构图） */
+.grid-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+}
+
+.grid-h1 {
+  left: 0;
+  right: 0;
+  top: 33.33%;
+  height: 1px;
+}
+
+.grid-h2 {
+  left: 0;
+  right: 0;
+  top: 66.66%;
+  height: 1px;
+}
+
+.grid-v1 {
+  top: 0;
+  bottom: 0;
+  left: 33.33%;
+  width: 1px;
+}
+
+.grid-v2 {
+  top: 0;
+  bottom: 0;
+  left: 66.66%;
+  width: 1px;
 }
 
 .camera-actions {

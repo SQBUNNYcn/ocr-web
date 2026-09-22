@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+// 受控预览：由父组件传入（可展示校正后的图）
+defineProps<{
+  preview?: string
+}>()
+
 const emit = defineEmits<{
   select: [image: File]
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
-const preview = ref('')
 const isDragging = ref(false)
 
 function handleFile(file: File | undefined) {
@@ -15,7 +19,6 @@ function handleFile(file: File | undefined) {
     alert('请选择图片文件')
     return
   }
-  preview.value = URL.createObjectURL(file)
   emit('select', file)
 }
 
