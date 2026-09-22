@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount, computed } from 'vue'
+import { ref, onBeforeUnmount, onMounted, computed } from 'vue'
 import ImageUploader from './components/ImageUploader.vue'
 import ResultPanel from './components/ResultPanel.vue'
 import CameraCapture from './components/CameraCapture.vue'
@@ -11,6 +11,7 @@ const {
   error,
   progress,
   recognize,
+  preload,
   terminate,
   supportedLanguages,
 } = useOcr()
@@ -59,6 +60,11 @@ function handleClear() {
   status.value = 'idle'
   language.value = 'chi_sim+eng'
 }
+
+// 应用启动后，后台预加载识别引擎（语言模型），前台显示"加载中"
+onMounted(() => {
+  preload(language.value)
+})
 
 onBeforeUnmount(() => {
   terminate()
