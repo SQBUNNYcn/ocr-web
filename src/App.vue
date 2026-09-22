@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, onBeforeUnmount, computed } from 'vue'
 import ImageUploader from './components/ImageUploader.vue'
 import ResultPanel from './components/ResultPanel.vue'
+import CameraCapture from './components/CameraCapture.vue'
 import { useOcr } from './composables/useOcr'
-
-// 扫码组件按需加载（避免 OCR 用户首次加载 ZXing 库）
-const BarcodeScanner = defineAsyncComponent(
-  () => import('./components/BarcodeScanner.vue'),
-)
 
 const {
   status,
@@ -20,28 +16,43 @@ const {
 } = useOcr()
 
 const selectedImage = ref<File | null>(null)
+const capturedImage = ref('')
 const language = ref('chi_sim+eng')
-const activeTab = ref<'ocr' | 'scan'>('ocr')
+const activeTab = ref<'ocr' | 'camera'>('ocr')
+
+// 当前标签页对应的图片（上传文件或拍照结果）
+const currentImage = computed(() =>
+  activeTab.value === 'ocr' ? selectedImage.value : capturedImage.value || null,
+)
+const hasImage = computed(() => !!currentImage.value)
 
 async function handleSelect(image: File) {
   selectedImage.value = image
   await recognize(image, language.value)
 }
 
+async function handleCapture(image: string) {
+  capturedImage.value = image
+  await recognize(image, language.value)
+}
+
 async function handleLanguageChange() {
-  if (selectedImage.value) {
-    await recognize(selectedImage.value, language.value)
+  const img = currentImage.value
+  if (img) {
+    await recognize(img, language.value)
   }
 }
 
 async function handleRetry() {
-  if (selectedImage.value) {
-    await recognize(selectedImage.value, language.value)
+  const img = currentImage.value
+  if (img) {
+    await recognize(img, language.value)
   }
 }
 
 function handleClear() {
   selectedImage.value = null
+  capturedImage.value = ''
   result.value = null
   error.value = ''
   progress.value = 0
@@ -79,15 +90,14 @@ onBeforeUnmount(() => {
         </button>
         <button
           class="tab"
-          :class="{ active: activeTab === 'scan' }"
-          @click="activeTab = 'scan'"
+          :class="{ active: activeTab === 'camera' }"
+          @click="activeTab = 'camera'"
         >
-          扫码
+          拍照识别
         </button>
       </nav>
 
-      <template v-if="activeTab === 'ocr'">
-        <section class="controls">
+      <section class="controls">
         <div class="language-select">
           <label for="lang">识别语言</label>
           <select id="lang" v-model="language" :disabled="status === 'recognizing' || status === 'loading'" @change="handleLanguageChange">
@@ -99,13 +109,13 @@ onBeforeUnmount(() => {
 
         <div class="action-buttons">
           <button
-            v-if="selectedImage && status === 'done'"
+            v-if="hasImage && status === 'done'"
             class="btn btn-secondary"
             @click="handleRetry"
           >
             重新识别
           </button>
-          <button v-if="selectedImage" class="btn btn-ghost" @click="handleClear">
+          <button v-if="hasImage" class="btn btn-ghost" @click="handleClear">
             清空
           </button>
         </div>
@@ -123,13 +133,19 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="content-grid">
-        <ImageUploader @select="handleSelect" />
-        <ResultPanel :result="result" />
-      </div>
+      <template v-if="activeTab === 'ocr'">
+        <div class="content-grid">
+          <ImageUploader @select="handleSelect" />
+          <ResultPanel :result="result" />
+        </div>
       </template>
 
-      <BarcodeScanner v-else />
+      <template v-else>
+        <div class="content-grid">
+          <CameraCapture @capture="handleCapture" />
+          <ResultPanel :result="result" />
+        </div>
+      </template>
     </main>
 
     <footer class="footer">
