@@ -114,10 +114,21 @@ onBeforeUnmount(stop)
 <template>
   <div class="camera">
     <div class="video-wrap">
-      <video ref="videoRef" class="video" playsinline muted></video>
+      <video
+        ref="videoRef"
+        v-show="!capturedImage"
+        class="video"
+        playsinline
+        muted
+      ></video>
 
       <!-- 拍照后的静态预览 -->
-      <img v-if="capturedImage" :src="capturedImage" alt="拍照预览" class="captured" />
+      <img
+        v-show="capturedImage"
+        :src="capturedImage"
+        alt="拍照预览"
+        class="captured"
+      />
 
       <!-- 未开启摄像头时的占位 -->
       <div v-if="!streaming && !capturedImage" class="video-overlay">
