@@ -1,0 +1,48 @@
+:root {
+  --primary: #3b82f6;
+  --primary-soft: rgba(59, 130, 246, 0.12);
+  --bg: #ffffff;
+  --bg-soft: #f8fafc;
+  --bg-hover: #eef2f7;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --bg-soft: #1e293b;
+    --bg-hover: #273449;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-secondary: #94a3b8;
+  }
+}
