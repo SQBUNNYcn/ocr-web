@@ -118,11 +118,15 @@ export function useOcr() {
           const smallCtx = smallCanvas.getContext('2d')
           if (smallCtx) {
             smallCtx.drawImage(img, 0, 0, sw, sh)
-            const angle = detectSkewAngleFromCanvas(smallCanvas)
+            const detection = detectSkewAngleFromCanvas(smallCanvas)
+            const angle = detection.angle
             deskewAngle.value = Math.round(angle * 10) / 10
-            if (Math.abs(angle) >= 0.5) {
+            // 仅当检测可靠且倾斜明显时才校正，避免误判破坏正常图片
+            if (detection.reliable && Math.abs(angle) >= 0.5) {
               deskewCorrected.value = true
               canvas = rotateCanvas(canvas, angle)
+            } else {
+              deskewCorrected.value = false
             }
           }
         } catch {

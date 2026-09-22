@@ -13,8 +13,15 @@ export interface DeskewResult {
 
 /** 小于该角度（度）视为无需校正 */
 const MIN_SIGNIFICANT_ANGLE = 0.5
-/** 角度检测的搜索范围（度） */
-const SEARCH_RANGE = 15
+/** 角度检测的搜索范围（度），手抖歪斜通常在 ±10° 以内 */
+const SEARCH_RANGE = 10
+
+export interface SkewDetection {
+  /** 检测到的倾斜角度（度） */
+  angle: number
+  /** 检测是否可靠（有明显倾斜），不可靠时应跳过校正避免破坏图片 */
+  reliable: boolean
+}
 
 function grayOfPixel(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b
@@ -160,10 +167,23 @@ function detectAngle(canvas: HTMLCanvasElement, threshold: number): number {
   return bestAngle
 }
 
-/** 从 canvas 直接检测文字倾斜角度（同步，内部使用 Otsu + 投影法） */
-export function detectSkewAngleFromCanvas(canvas: HTMLCanvasElement): number {
+/** 从 canvas 直接检测文字倾斜角度（同步，内部使用 Otsu + 投影法），并给出可靠度 */
+export function detectSkewAngleFromCanvas(canvas: HTMLCanvasElement): SkewDetection {
   const threshold = otsuThreshold(canvas)
-  return detectAngle(canvas, threshold)
+  const angle = detectAngle(canvas, threshold)
+
+  // 可靠度判断：最佳角度 vs 0° 的投影方差对比
+  const scoreZero = projectionScore(canvas, threshold, 0)
+  const scoreBest = projectionScore(canvas, threshold, angle)
+
+  // 文字极少或纯色图（投影方差接近 0）时，判定不可靠
+  if (scoreZero < 1) {
+    return { angle: 0, reliable: false }
+  }
+  // 最佳角度的方差需明显高于 0°（≥10%），否则说明没有可靠倾斜，跳过校正
+  const reliable = scoreBest > scoreZero * 1.1
+
+  return { angle, reliable }
 }
 
 /**
