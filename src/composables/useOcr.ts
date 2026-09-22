@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { createWorker, PSM, type Worker } from 'tesseract.js'
+import { enhanceImageData } from '../utils/imageEnhance'
 
 export type OcrStatus = 'idle' | 'loading' | 'recognizing' | 'done' | 'error'
 
@@ -95,19 +96,13 @@ export function useOcr() {
 
       ctx.drawImage(img, 0, 0, w, h)
 
-      // 灰度化 + 线性对比度增强
+      // 图像增强：灰度化 + 畸变校正 + 锐化 + 二值化
       const imageData = ctx.getImageData(0, 0, w, h)
-      const data = imageData.data
-      const contrast = 1.5
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-        const v = (gray - 128) * contrast + 128
-        const c = v < 0 ? 0 : v > 255 ? 255 : v
-        data[i] = data[i + 1] = data[i + 2] = c
-      }
-      ctx.putImageData(imageData, 0, 0)
+      const enhanced = enhanceImageData(imageData)
+      ctx.putImageData(enhanced, 0, 0)
 
-      return canvas.toDataURL('image/jpeg', 0.95)
+      // 二值化后输出 PNG（无损），避免 JPEG 压缩在黑白边界产生噪点
+      return canvas.toDataURL('image/png')
     } finally {
       if (typeof image !== 'string') {
         URL.revokeObjectURL(url)
