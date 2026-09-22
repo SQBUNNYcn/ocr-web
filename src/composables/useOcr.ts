@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { createWorker, type Worker } from 'tesseract.js'
+import { createWorker, PSM, type Worker } from 'tesseract.js'
 
 export type OcrStatus = 'idle' | 'loading' | 'recognizing' | 'done' | 'error'
 
@@ -14,6 +14,15 @@ const SUPPORTED_LANGUAGES = [
   { value: 'eng', label: '英文' },
   { value: 'jpn', label: '日文' },
   { value: 'kor', label: '韩文' },
+]
+
+// 页面分割模式（Page Segmentation Mode）选项
+const PSM_OPTIONS = [
+  { value: PSM.AUTO, label: '自动检测' },
+  { value: PSM.SINGLE_BLOCK, label: '整页文档' },
+  { value: PSM.SINGLE_COLUMN, label: '单列文字' },
+  { value: PSM.SINGLE_LINE, label: '单行文字' },
+  { value: PSM.SPARSE_TEXT, label: '稀疏文字' },
 ]
 
 export function useOcr() {
@@ -56,7 +65,57 @@ export function useOcr() {
     }
   }
 
-  async function recognize(image: File | Blob | string, language: string) {
+  // 图像预处理：缩放 + 灰度化 + 对比度增强，提升 OCR 准确率
+  async function preprocessImage(image: File | Blob | string): Promise<string> {
+    const url = typeof image === 'string' ? image : URL.createObjectURL(image)
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image()
+        el.onload = () => resolve(el)
+        el.onerror = () => reject(new Error('图片加载失败'))
+        el.src = url
+      })
+
+      let w = img.naturalWidth
+      let h = img.naturalHeight
+
+      // 缩放：限制最大宽度，避免超大图降低识别效果
+      const MAX_WIDTH = 2000
+      if (w > MAX_WIDTH) {
+        const scale = MAX_WIDTH / w
+        w = MAX_WIDTH
+        h = Math.round(h * scale)
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return url
+
+      ctx.drawImage(img, 0, 0, w, h)
+
+      // 灰度化 + 线性对比度增强
+      const imageData = ctx.getImageData(0, 0, w, h)
+      const data = imageData.data
+      const contrast = 1.5
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+        const v = (gray - 128) * contrast + 128
+        const c = v < 0 ? 0 : v > 255 ? 255 : v
+        data[i] = data[i + 1] = data[i + 2] = c
+      }
+      ctx.putImageData(imageData, 0, 0)
+
+      return canvas.toDataURL('image/jpeg', 0.95)
+    } finally {
+      if (typeof image !== 'string') {
+        URL.revokeObjectURL(url)
+      }
+    }
+  }
+
+  async function recognize(image: File | Blob | string, language: string, psm: string = PSM.AUTO) {
     if (!image) {
       error.value = '请先选择一张图片'
       return
@@ -76,7 +135,11 @@ export function useOcr() {
     result.value = null
 
     try {
-      const { data } = await worker.value.recognize(image)
+      // 设置页面分割模式（PSM），提升不同版面文字的识别准确率
+      await worker.value.setParameters({ tessedit_pageseg_mode: psm as PSM })
+      // 图像预处理（缩放 + 灰度 + 对比度）
+      const processed = await preprocessImage(image)
+      const { data } = await worker.value.recognize(processed)
       result.value = {
         text: data.text,
         confidence: data.confidence,
@@ -104,5 +167,6 @@ export function useOcr() {
     preload,
     terminate,
     supportedLanguages: SUPPORTED_LANGUAGES,
+    psmOptions: PSM_OPTIONS,
   }
 }

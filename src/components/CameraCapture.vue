@@ -86,30 +86,9 @@ function capture() {
 
   // 明确指定源与目标尺寸，避免移动端浏览器 drawImage 尺寸异常导致偏移
   ctx.drawImage(video, 0, 0, vw, vh)
-  applyImageProcessing(ctx, vw, vh)
   capturedImage.value = canvas.toDataURL('image/jpeg', 0.95)
   stop()
   emit('capture', capturedImage.value)
-}
-
-// 图像预处理：灰度化 + 提高对比度，提升 OCR 识别准确率
-function applyImageProcessing(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-) {
-  const imageData = ctx.getImageData(0, 0, width, height)
-  const data = imageData.data
-  const contrast = 1.5 // 对比度因子，>1 增强对比
-  for (let i = 0; i < data.length; i += 4) {
-    // 加权灰度（人眼感知权重）
-    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-    // 线性对比度拉伸：以 128 为中心
-    const v = (gray - 128) * contrast + 128
-    const c = v < 0 ? 0 : v > 255 ? 255 : v
-    data[i] = data[i + 1] = data[i + 2] = c
-  }
-  ctx.putImageData(imageData, 0, 0)
 }
 
 function retake() {

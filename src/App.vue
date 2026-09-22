@@ -14,11 +14,13 @@ const {
   preload,
   terminate,
   supportedLanguages,
+  psmOptions,
 } = useOcr()
 
 const selectedImage = ref<File | null>(null)
 const capturedImage = ref('')
 const language = ref('chi_sim+eng')
+const psm = ref('3') // 页面分割模式，默认自动检测
 const activeTab = ref<'ocr' | 'camera'>('ocr')
 
 // 当前标签页对应的图片（上传文件或拍照结果）
@@ -29,25 +31,25 @@ const hasImage = computed(() => !!currentImage.value)
 
 async function handleSelect(image: File) {
   selectedImage.value = image
-  await recognize(image, language.value)
+  await recognize(image, language.value, psm.value)
 }
 
 async function handleCapture(image: string) {
   capturedImage.value = image
-  await recognize(image, language.value)
+  await recognize(image, language.value, psm.value)
 }
 
 async function handleLanguageChange() {
   const img = currentImage.value
   if (img) {
-    await recognize(img, language.value)
+    await recognize(img, language.value, psm.value)
   }
 }
 
 async function handleRetry() {
   const img = currentImage.value
   if (img) {
-    await recognize(img, language.value)
+    await recognize(img, language.value, psm.value)
   }
 }
 
@@ -109,6 +111,15 @@ onBeforeUnmount(() => {
           <select id="lang" v-model="language" :disabled="status === 'recognizing' || status === 'loading'" @change="handleLanguageChange">
             <option v-for="lang in supportedLanguages" :key="lang.value" :value="lang.value">
               {{ lang.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="language-select">
+          <label for="psm">识别模式</label>
+          <select id="psm" v-model="psm" :disabled="status === 'recognizing' || status === 'loading'" @change="handleLanguageChange">
+            <option v-for="opt in psmOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
             </option>
           </select>
         </div>
